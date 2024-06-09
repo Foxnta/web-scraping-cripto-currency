@@ -1,5 +1,7 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
 from rich import print
 from rich.table import Table
 
@@ -14,10 +16,12 @@ class Controller:
             self.menu.ShowMenu(self.user)
             menuoption = self.menu.GetAnswer()
             print('\n')
+            
             if menuoption == 1:
                 #update info and show
                 listelements = self.data.UpdateData()
                 print(self.data.AllElementsInTable(listelements))
+
             elif menuoption == 2:
                 #filter the data
                 print("Select an option:")
@@ -76,10 +80,16 @@ class DataBase:
         self.Data = []
 
     def UpdateData(self):
-        #conect to driver and web page
-        driver = webdriver.Chrome(executable_path="C:\Drivers\chromedriver_win32\chromedriver.exe")
+        # Configurar opciones de Chrome
+        options = Options()
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--ignore-ssl-errors')
+        
+        # Conectar al driver y a la página web
+        service = ChromeService(executable_path="C:\\chromedriver.exe")
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get("https://finance.yahoo.com/crypto?offset=0&count=100")
-        # extract the followoing information 
+        # Extraer la siguiente información 
         # Symbol, Name, Price (Intraday), Change, %Change y Market Cap
         Symbol = driver.find_elements(By.XPATH, "//a[@data-test='quoteLink']")
         Name = driver.find_elements(By.XPATH, "//td[@class='Va(m) Ta(start) Px(10px) Fz(s)']")
@@ -87,42 +97,59 @@ class DataBase:
         Change = driver.find_elements(By.XPATH, "//fin-streamer[@data-field='regularMarketChange']")
         Changepercentage = driver.find_elements(By.XPATH, "//fin-streamer[@data-field='regularMarketChangePercent']")
         Marketcap = driver.find_elements(By.XPATH, "//fin-streamer[@data-field='marketCap']")
-        #extract the text in the list
+        # Extraer el texto en la lista
         def extract_text(lst):
-            # base case
+            # Caso base
             if not lst:
                 return lst
-            # recursive case
+            # Caso recursivo
             rest = extract_text(lst[1:])
             lst[0] = lst[0].text
             return [lst[0]] + rest
+        
+        def extract_attribute(lst, attribute):
+            # Caso base
+            if not lst:
+                return lst
+            # Caso recursivo
+            rest = extract_attribute(lst[1:], attribute)
+            lst[0] = lst[0].get_attribute(attribute)
+            return [lst[0]] + rest
+        
         Symbol = extract_text(Symbol)
         Name = extract_text(Name)
-        Price = extract_text(Price)
+        Price = extract_attribute(Price, 'value')
         Change = extract_text(Change)
-        Changepercentage = extract_text(Changepercentage)
+        Changepercentage = extract_attribute(Changepercentage, 'value')
         Marketcap = extract_text(Marketcap)
-        #join elements
+        # Unir elementos
         listelements = list(zip(Symbol, Name, Price, Change, Changepercentage, Marketcap))
         driver.quit()
         return listelements
+
     
     def addCoin(self, listelements, link):
-        #conect to driver and web page
-        driver = webdriver.Chrome(executable_path="C:\Drivers\chromedriver_win32\chromedriver.exe")
+        # Configurar opciones de Chrome
+        options = Options()
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--ignore-ssl-errors')
+        
+        # Conectar al driver y a la página web
+        service = ChromeService(executable_path="C:\\chromedriver.exe")
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get(link)
-        # extract the followoing information 
+        # Extraer la siguiente información 
         # Symbol, Name, Price (Intraday), Change, %Change y Market Cap
         cadena = driver.find_elements(By.XPATH, "//div[@class='D(ib) Mend(20px)']")
         cadena2 =  driver.find_elements(By.XPATH, "//h1[@class='D(ib) Fz(18px)']")
         Marketcap = driver.find_elements(By.XPATH, "//td[@data-test='MARKET_CAP-value']")
 
-        #extract the text in the list
+        # Extraer el texto en la lista
         def extract_text(lst):
-            # base case
+            # Caso base
             if not lst:
                 return lst
-            # recursive case
+            # Caso recursivo
             rest = extract_text(lst[1:])
             lst[0] = lst[0].text
             return [lst[0]] + rest
@@ -161,7 +188,7 @@ class DataBase:
         else:
             listelements.append(tuple(lista))
             return listelements
-            
+
 
     def AllElementsInTable(self, listelements):
         table = Table('Num', 'Symbol', 'Name', 'Price (Intraday)', 'Change', '%Change', 'Market Cap')
